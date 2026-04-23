@@ -248,8 +248,7 @@
 
                 <div class="share-inline">
                     <div class="share-label">🔗 SDÍLET VÝSLEDKY</div>
-                    <input type="text" id="shareUrlInput" class="share-link-input" value="https://statistika.tiiny.site/" readonly>
-                    <button class="btn-small btn-copy" onclick="copyShareLink()">Kopírovat</button>
+                    <input type="text" id="shareUrlInput" class="share-link-input" value="https://statisticka-kalkulackos.vercel.app/" readonly>
                 </div>
             </div>
 
@@ -263,7 +262,6 @@
     <div class="footer" data-html2canvas-ignore="true" align="center" style="margin-top: 30px; font-size: 12px; color: #95a5a6;">
         <a href="https://linktr.ee/asky" target="_blank">webovou aplikaci vytvořil Adam Škývara</a>
     </div>
-</div>
 </div>
 
 <script>
@@ -377,7 +375,7 @@
 
     function generateShareLinkAndQR(rawInput) {
         const cleanData = rawInput.split(/[\s;]+/).filter(s => s.trim() !== "").join(';');
-        const baseUrl = 'https://statistika.tiiny.site/';
+        const baseUrl = window.location.origin + window.location.pathname;
         const shareUrl = baseUrl + '?data=' + encodeURIComponent(cleanData);
         document.getElementById('shareUrlInput').value = shareUrl;
         const qrContainer = document.getElementById("qrcode");
@@ -406,7 +404,7 @@
         const dataInput = document.getElementById('dataInput').value || '';
         const nums = dataInput.split(/[\s;]+/).filter(s => s.trim() !== "").map(s => s.trim()).filter(Boolean);
         const cleanData = nums.join(';');
-        const baseUrl = 'https://statistika.tiiny.site/';
+        const baseUrl = window.location.origin + window.location.pathname;
         const shareUrl = baseUrl + '?data=' + encodeURIComponent(cleanData);
         const dateStr = new Date().toLocaleString('cs-CZ');
         const author = (document.querySelector('.footer a') || { textContent: 'Autor' }).textContent.trim();
