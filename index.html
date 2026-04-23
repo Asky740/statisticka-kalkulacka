@@ -51,6 +51,30 @@
         .btn-word { background-color: #2980b9; }
         .btn-decimals { background-color: #7f8c8d; padding: 8px 15px; font-size: 13px; max-width: 200px; margin-left: auto; }
 
+        /* --- LAYOUT VSTUPNÍHO POLE A TLAČÍTKA --- */
+        .textarea-container {
+            display: flex;
+            gap: 10px;
+            align-items: stretch; /* Roztáhne tlačítko na stejnou výšku jako textové pole */
+            margin-top: 8px;
+        }
+        .textarea-container textarea {
+            margin-top: 0;
+            flex: 1;
+        }
+        .btn-clear {
+            background-color: #e74c3c;
+            margin: 0;
+            flex: 0 0 85px; /* Vynutí šířku přesně 85px a zakáže roztahování */
+            padding: 5px;
+            display: flex;
+            flex-direction: column; /* Ikona a text pod sebou */
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+        }
+
         /* --- REPORT DESCRIPTION --- */
         .report-desc { background: #f8fbff; border-left: 4px solid #cfe7ff; padding: 10px 12px; border-radius: 6px; color: #123244; margin-bottom: 12px; font-size: 14px; display: none; }
 
@@ -67,15 +91,6 @@
         .output-right { width:140px; display:flex; flex-direction:column; align-items:center; gap:8px; }
         .output-right #qrcode { width:120px; height:120px; display:flex; align-items:center; justify-content:center; }
         .btn-download-qr { padding:10px 12px; border-radius:8px; background:#8e44ad; color:white; font-weight:700; border:none; }
-        @media (max-width:650px) {
-            .output-card { flex-direction: column; gap: 10px; }
-            .output-left { flex: 1 1 auto; min-width: 0; width: 100%; }
-            .output-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; align-self: flex-start; margin-top: 6px; }
-            .output-right #qrcode { width: 96px; height: 96px; margin: 0; }
-            .export-row .btn-pdf, .export-row .btn-excel, .export-row .btn-word { min-width: 0; flex: 1; }
-            .share-inline { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 0; }
-            .share-inline .btn-copy { margin-left: 0; width: 100%; }
-        }
         
         textarea { width: 100%; height: 90px; padding: 15px; font-size: 16px; border: 2px solid #eee; border-radius: 8px; background: #fafafa; margin-top: 10px; font-family: 'Courier New', monospace; resize: vertical; }
         
@@ -128,6 +143,25 @@
                 padding-left: 0; border-left: none; 
                 border-top: 1px solid #e2e8f0; padding-top: 15px; 
             }
+            .output-card { flex-direction: column; gap: 10px; }
+            .output-left { flex: 1 1 auto; min-width: 0; width: 100%; }
+            .output-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; align-self: flex-start; margin-top: 6px; }
+            .output-right #qrcode { width: 96px; height: 96px; margin: 0; }
+            .export-row .btn-pdf, .export-row .btn-excel, .export-row .btn-word { min-width: 0; flex: 1; }
+            .share-inline { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 0; }
+            .share-inline .btn-copy { margin-left: 0; width: 100%; }
+            
+            /* Zarovnání pole a tlačítka na smazání pro mobily */
+            .textarea-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .btn-clear {
+                flex: 1 1 auto; /* Na mobilu vrátíme roztahování */
+                width: 100%;
+                flex-direction: row; /* Zpět vedle sebe */
+                padding: 14px;
+            }
         }
 
         /* --- PDF EXPORT STYLY S VĚTŠÍM QR KÓDEM --- */
@@ -168,8 +202,17 @@
     <div class="no-export">
         <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
         <button class="btn-scan scan-top" onclick="document.getElementById('cameraInput').click()">📷 Skenovat příklad</button>
-        <p style="font-size: 14px;">Čísla oddělujte <strong>mezerou</strong> nebo <strong>středníkem</strong>:</p>
-        <textarea id="dataInput">15; 16,5; 18; 15; 20; 22,2; 19; 18,5; 16; 17; 15; 21</textarea>
+        
+        <p style="font-size: 14px; margin-bottom: 0;">Čísla oddělujte <strong>mezerou</strong> nebo <strong>středníkem</strong>:</p>
+
+        <div class="textarea-container">
+            <textarea id="dataInput">15; 16,5; 18; 15; 20; 22,2; 19; 18,5; 16; 17; 15; 21</textarea>
+            <button onclick="clearData()" class="btn-clear no-export">
+                <span style="font-size: 20px;">🗑️</span>
+                <span>Smazat</span>
+            </button>
+        </div>
+        
         <div id="statusOCR" style="font-size: 12px; color: #e67e22; margin-top: 5px;"></div>
         <div style="margin-top:10px">
             <label for="caseDescInput" style="font-size:13px; color:#4a5568; display:block; margin-bottom:6px;">Popis / zadání (volitelné)</label>
@@ -292,7 +335,11 @@
     function update() {
         const input = document.getElementById('dataInput').value;
         const nums = input.split(/[\s;]+/).filter(s => s.trim() !== "").map(parseNum).filter(n => !isNaN(n));
-        if (nums.length === 0) return;
+        if (nums.length === 0) {
+            // Pokud po aktualizaci vstupu není žádné číslo, vyčistíme to.
+            return clearData();
+        }
+        
         const n = nums.length;
         const mean = nums.reduce((a, b) => a + b, 0) / n;
         const sorted = [...nums].sort((a, b) => a - b);
@@ -321,12 +368,39 @@
         renderTable(freqs, mean);
         renderCharts(freqs);
         generateShareLinkAndQR(input);
+        
         // Aktualizace popisu/vysvětlení reportu
         const descEl = document.getElementById('reportDescription');
         const descRaw = (document.getElementById('caseDescInput') || { value: '' }).value.trim();
         const desc = descRaw;
         const descEsc = descRaw ? escapeHtml(descRaw) : '';
         if (desc && desc.length > 0) { descEl.textContent = desc; descEl.style.display = 'block'; } else { descEl.textContent = ''; descEl.style.display = 'none'; }
+    }
+
+    // Funkce pro smazání všech dat
+    function clearData() {
+        document.getElementById('dataInput').value = '';
+        document.getElementById('statusOCR').innerText = '';
+        
+        const statIds = ['val-n', 'val-mean', 'val-median', 'val-mode', 'val-std', 'val-var', 'val-avgdev', 'val-cv'];
+        statIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = '-';
+        });
+        
+        const tbody = document.querySelector('#calcTable tbody');
+        const tfoot = document.querySelector('#calcTable tfoot');
+        if (tbody) tbody.innerHTML = '';
+        if (tfoot) tfoot.innerHTML = '';
+        
+        if (charts.pie) { charts.pie.destroy(); charts.pie = null; }
+        if (charts.line) { charts.line.destroy(); charts.line = null; }
+        
+        const descEl = document.getElementById('reportDescription');
+        if (descEl) {
+            descEl.textContent = '';
+            descEl.style.display = 'none';
+        }
     }
 
     function renderTable(freqs, mean) {
