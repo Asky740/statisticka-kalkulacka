@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Statistická Kalkulačka</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/html-docx-js@0.3.1/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background-color: #f4f7f6; 
+            color: #333; 
+            overflow-x: hidden; 
+            width: 100vw;
+            padding: 15px; 
+        }
+        
+        .container { 
+            width: 100%; 
+            max-width: 1100px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+        }
+        
+        .no-export { margin-bottom: 20px; }
+        .action-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        button { padding: 12px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; color: white; display: flex; align-items: center; justify-content: center; flex: 1 1 auto; }
+        button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        .btn-scan { background-color: #f39c12; }
+        .scan-top { width: 100%; margin-bottom: 15px; justify-content: center; display:flex; }
+        .btn-pdf { background-color: #e74c3c; }
+        .btn-excel { background-color: #27ae60; }
+        .btn-word { background-color: #2980b9; }
+        .btn-decimals { background-color: #7f8c8d; padding: 8px 15px; font-size: 13px; max-width: 200px; margin-left: auto; }
+
+        /* --- REPORT DESCRIPTION --- */
+        .report-desc { background: #f8fbff; border-left: 4px solid #cfe7ff; padding: 10px 12px; border-radius: 6px; color: #123244; margin-bottom: 12px; font-size: 14px; display: none; }
+
+        /* --- OUTPUT CARD (exporty + QR) --- */
+        .output-card { background: #fff; border: 1px solid #d7eafb; border-radius: 12px; padding: 16px; box-shadow: 0 8px 20px rgba(10,30,60,0.06); display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; margin-top: 12px; }
+        .output-left { flex: 1 1 420px; min-width: 220px; }
+        .output-title { font-size: 18px; font-weight: 800; color: #153e5a; margin-bottom: 8px; }
+        .export-row { display:flex; gap:10px; margin-bottom:12px; }
+        .export-row .btn-pdf, .export-row .btn-excel, .export-row .btn-word { padding:10px 14px; border-radius:8px; font-weight:700; display:inline-flex; align-items:center; gap:8px; min-width:140px; }
+        .share-inline { display:flex; gap:10px; align-items:center; background:transparent; padding:0; }
+        .share-inline .share-label { color:#6b7b8a; font-size:12px; font-weight:700; text-transform:uppercase; display:flex; align-items:center; gap:8px; margin-right:6px; }
+        .share-inline .share-link-input { flex:1; }
+        .share-inline .btn-copy { margin-left:8px; padding:10px 12px; border-radius:8px; }
+        .output-right { width:140px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+        .output-right #qrcode { width:120px; height:120px; display:flex; align-items:center; justify-content:center; }
+        .btn-download-qr { padding:10px 12px; border-radius:8px; background:#8e44ad; color:white; font-weight:700; border:none; }
+        @media (max-width:650px) {
+            .output-card { flex-direction: column; gap: 10px; }
+            .output-left { flex: 1 1 auto; min-width: 0; width: 100%; }
+            .output-right { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; align-self: flex-start; margin-top: 6px; }
+            .output-right #qrcode { width: 96px; height: 96px; margin: 0; }
+            .export-row .btn-pdf, .export-row .btn-excel, .export-row .btn-word { min-width: 0; flex: 1; }
+            .share-inline { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 0; }
+            .share-inline .btn-copy { margin-left: 0; width: 100%; }
+        }
+        
+        textarea { width: 100%; height: 90px; padding: 15px; font-size: 16px; border: 2px solid #eee; border-radius: 8px; background: #fafafa; margin-top: 10px; font-family: 'Courier New', monospace; resize: vertical; }
+        
+        .pdf-header { text-align: center; margin-bottom: 30px; display: none; }
+        h1 { color: #2c3e50; text-align: center; margin-bottom: 20px; font-size: 1.8rem; }
+        
+        /* --- SDÍLECÍ PANEL --- */
+        .share-section { 
+            display: flex; flex-direction: row; justify-content: space-between; align-items: center;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; 
+            padding: 15px; margin-bottom: 25px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        .share-info { flex: 1; margin-right: 20px; }
+        .share-title { font-size: 12px; color: #4a5568; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; }
+        .share-row { display: flex; gap: 10px; }
+        .share-link-input { 
+            flex: 1; padding: 10px; font-size: 13px; color: #4a5568; 
+            border: 1px solid #cbd5e0; border-radius: 6px; background: #f8fafc; 
+        }
+        .btn-small { 
+            padding: 10px 15px; font-size: 13px; border: none; border-radius: 6px; 
+            cursor: pointer; color: white; font-weight: bold; white-space: nowrap; transition: 0.2s; 
+        }
+        .btn-copy { background-color: #34495e; }
+
+        /* --- STAT CARDS GRID --- */
+        .stats-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin: 20px 0; }
+        .stat-box { background: #fff; padding: 12px 5px; border-radius: 10px; text-align: center; border: 1px solid #edf2f7; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .stat-title { font-size: 10px; color: #718096; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .stat-value { font-size: 17px; font-weight: 800; color: #3182ce; }
+
+        @media (max-width: 1000px) {
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (max-width: 650px) {
+            body { padding: 10px 5px; }
+            .container { padding: 15px; border-radius: 8px; }
+            .action-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+            .btn-scan { grid-column: span 2; }
+            button { width: 100%; padding: 14px; font-size: 14px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .chart-wrapper { height: 250px; }
+            h1 { font-size: 1.5rem; }
+            .share-section { flex-direction: column; align-items: stretch; padding: 15px; gap: 15px; }
+            .share-info { margin-right: 0; }
+            .share-row { flex-direction: column; }
+            .share-qr-box { 
+                flex-direction: row; justify-content: center; 
+                padding-left: 0; border-left: none; 
+                border-top: 1px solid #e2e8f0; padding-top: 15px; 
+            }
+        }
+
+        /* --- PDF EXPORT STYLY S VĚTŠÍM QR KÓDEM --- */
+        .pdf-mode { width: 100% !important; max-width: 800px !important; margin: 0 auto !important; padding: 0 !important; box-shadow: none !important; }
+        .pdf-mode .no-export, .pdf-mode .footer, .pdf-mode .btn-download-qr, .pdf-mode .share-info { display: none !important; }
+        .pdf-mode .pdf-header { display: block !important; }
+        .pdf-mode .share-section { justify-content: center; border: none; box-shadow: none; margin-top: 0; padding: 10px 0; }
+        .pdf-mode .share-qr-box { border: none; padding: 0; display: flex; justify-content: center; width: 100%; }
+        .pdf-mode .report-desc { display: block !important; }
+        
+        .pdf-mode #qrcode { transform: scale(1.6); transform-origin: center; margin: 25px auto 40px auto; border: none; }
+        
+        .pdf-mode .charts-container { display: block !important; }
+        .pdf-mode .chart-box { margin-bottom: 30px !important; page-break-inside: avoid; }
+        .pdf-mode .table-responsive { overflow: visible !important; border: none; }
+        .pdf-mode table { font-size: 11px !important; border: 1px solid #000; min-width: auto; }
+        .pdf-mode th, .pdf-mode td { border: 1px solid #000; padding: 6px; }
+        .pdf-mode tr { page-break-inside: avoid !important; }
+        /* Global table styles for the main page */
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; border: 1px solid #e2e8f0; display: block; margin: 15px 0 10px 0; }
+        table { width: 100%; border-collapse: collapse; background: white; min-width: 700px; }
+        th, td { padding: 10px 8px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; text-align: right; }
+        th { background-color: #f8fafc; color: #4a5568; font-weight: 700; text-align: center; }
+        td:last-child, th:last-child { border-right: none; }
+        .sum-row td { background-color: #f1f5f9; font-weight: bold; border-bottom: none; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainApp">
+    <div class="pdf-header">
+        <h2>Statistický report dat</h2>
+        <hr>
+    </div>
+
+    <h1 class="no-export">Statistická Kalkulačka</h1>
+
+    <div class="no-export">
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+        <button class="btn-scan scan-top" onclick="document.getElementById('cameraInput').click()">📷 Skenovat příklad</button>
+        <p style="font-size: 14px;">Čísla oddělujte <strong>mezerou</strong> nebo <strong>středníkem</strong>:</p>
+        <textarea id="dataInput">15; 16,5; 18; 15; 20; 22,2; 19; 18,5; 16; 17; 15; 21</textarea>
+        <div id="statusOCR" style="font-size: 12px; color: #e67e22; margin-top: 5px;"></div>
+        <div style="margin-top:10px">
+            <label for="caseDescInput" style="font-size:13px; color:#4a5568; display:block; margin-bottom:6px;">Popis / zadání (volitelné)</label>
+            <input id="caseDescInput" type="text" placeholder="Krátký popis dat nebo zadání" style="width:100%; padding:10px; border:1px solid #e6eef8; border-radius:8px; background:#fff;" />
+        </div>
+    </div>
+
+    <div id="section1">
+        <div id="reportDescription" class="report-desc"></div>
+
+        <div class="stats-grid">
+            <div class="stat-box"><div class="stat-title">Rozsah (n)</div><div class="stat-value" id="val-n">-</div></div>
+            <div class="stat-box"><div class="stat-title">Průměr (x̄)</div><div class="stat-value" id="val-mean">-</div></div>
+            <div class="stat-box"><div class="stat-title">Medián (x̃)</div><div class="stat-value" id="val-median">-</div></div>
+            <div class="stat-box"><div class="stat-title">Modus (x̂)</div><div class="stat-value" id="val-mode">-</div></div>
+            <div class="stat-box"><div class="stat-title">Směr. odchylka (s_x)</div><div class="stat-value" id="val-std">-</div></div>
+            <div class="stat-box"><div class="stat-title">Rozptyl (s_x²)</div><div class="stat-value" id="val-var">-</div></div>
+            <div class="stat-box"><div class="stat-title">Prům. odchylka</div><div class="stat-value" id="val-avgdev">-</div></div>
+            <div class="stat-box"><div class="stat-title">Var. Koef. (v_x)</div><div class="stat-value" id="val-cv">-</div></div>
+        </div>
+
+        <h2>Výpočtová tabulka</h2>
+        <div class="table-responsive" id="tableExport">
+            <table id="calcTable">
+                <thead>
+                    <tr>
+                        <th>x<sub>i</sub></th>
+                        <th>n<sub>i</sub></th>
+                        <th>x<sub>i</sub> · n<sub>i</sub></th>
+                        <th>|x<sub>i</sub> - x̄|</th>
+                        <th>|x<sub>i</sub> - x̄| · n<sub>i</sub></th>
+                        <th>(x<sub>i</sub> - x̄)²</th>
+                        <th>(x<sub>i</sub> - x̄)² · n<sub>i</sub></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+                <tfoot></tfoot>
+            </table>
+        </div>
+        
+        <div class="no-export" style="display: flex; justify-content: flex-end;">
+            <button class="btn-decimals" id="btnDecimals" onclick="toggleDecimals()">⚙️ Desetinná místa: 2</button>
+        </div>
+    </div>
+
+    <div class="html2pdf__page-break"></div>
+
+    <div id="section2">
+        <h2 style="padding-top: 15px;">Grafické znázornění</h2>
+        <div class="charts-container">
+            <div class="chart-box">
+                <div class="stat-title" style="text-align:center">Podíly (Úhly °)</div>
+                <div class="chart-wrapper">
+                    <canvas id="pieChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-box">
+                <div class="stat-title" style="text-align:center">Rozdělení četností</div>
+                <div class="chart-wrapper">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="outputSection" class="no-export">
+        <div class="output-card">
+            <div class="output-left">
+                <div class="output-title">Výstup</div>
+
+                <div class="export-row">
+                    <button class="btn-pdf" onclick="exportToPDF()">📄 Export PDF</button>
+                    <button class="btn-excel" onclick="exportToExcel()">📊 Export Excel</button>
+                    <button class="btn-word" onclick="exportToWord()">📝 Export Word</button>
+                </div>
+
+                <div class="share-inline">
+                    <div class="share-label">🔗 SDÍLET VÝSLEDKY</div>
+                    <input type="text" id="shareUrlInput" class="share-link-input" value="https://statistika.tiiny.site/" readonly>
+                    <button class="btn-small btn-copy" onclick="copyShareLink()">Kopírovat</button>
+                </div>
+            </div>
+
+            <div class="output-right">
+                <div id="qrcode"></div>
+                <button class="btn-download-qr" onclick="downloadQR()">💾 Uložit QR</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer" data-html2canvas-ignore="true" align="center" style="margin-top: 30px; font-size: 12px; color: #95a5a6;">
+        <a href="https://linktr.ee/asky" target="_blank">webovou aplikaci vytvořil Adam Škývara</a>
+    </div>
+</div>
+</div>
+
+<script>
+    Chart.register(ChartDataLabels);
+    let charts = { pie: null, line: null };
+    let qrInst = null;
+    let currentDecimals = 2;
+
+    const parseNum = (s) => parseFloat(s.replace(',', '.'));
+    const fmt = (n) => n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: currentDecimals });
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/\n/g, '<br/>');
+    }
+
+    function toggleDecimals() {
+        currentDecimals = (currentDecimals + 1) % 5;
+        document.getElementById('btnDecimals').innerText = `⚙️ Desetinná místa: ${currentDecimals}`;
+        update();
+    }
+
+    function update() {
+        const input = document.getElementById('dataInput').value;
+        const nums = input.split(/[\s;]+/).filter(s => s.trim() !== "").map(parseNum).filter(n => !isNaN(n));
+        if (nums.length === 0) return;
+        const n = nums.length;
+        const mean = nums.reduce((a, b) => a + b, 0) / n;
+        const sorted = [...nums].sort((a, b) => a - b);
+        const median = n % 2 !== 0 ? sorted[Math.floor(n/2)] : (sorted[n/2 - 1] + sorted[n/2]) / 2;
+        const freqs = {};
+        nums.forEach(v => freqs[v] = (freqs[v] || 0) + 1);
+        let maxF = 0, modes = [];
+        for (let k in freqs) {
+            if (freqs[k] > maxF) { maxF = freqs[k]; modes = [k]; }
+            else if (freqs[k] === maxF) { modes.push(k); }
+        }
+        const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / n;
+        const stdDev = Math.sqrt(variance);
+        
+        // Výpočet variačního koeficientu
+        const cv = (mean !== 0) ? (stdDev / mean) * 100 : 0;
+
+        document.getElementById('val-n').innerText = n;
+        document.getElementById('val-mean').innerText = fmt(mean);
+        document.getElementById('val-median').innerText = fmt(median);
+        document.getElementById('val-mode').innerText = modes.map(m => fmt(parseFloat(m))).join('; ');
+        document.getElementById('val-std').innerText = fmt(stdDev);
+        document.getElementById('val-var').innerText = fmt(variance);
+        document.getElementById('val-cv').innerText = fmt(cv) + ' %';
+        
+        renderTable(freqs, mean);
+        renderCharts(freqs);
+        generateShareLinkAndQR(input);
+        // Aktualizace popisu/vysvětlení reportu
+        const descEl = document.getElementById('reportDescription');
+        const descRaw = (document.getElementById('caseDescInput') || { value: '' }).value.trim();
+        const desc = descRaw;
+        const descEsc = descRaw ? escapeHtml(descRaw) : '';
+        if (desc && desc.length > 0) { descEl.textContent = desc; descEl.style.display = 'block'; } else { descEl.textContent = ''; descEl.style.display = 'none'; }
+    }
+
+    function renderTable(freqs, mean) {
+        const labels = Object.keys(freqs).map(Number).sort((a,b) => a - b);
+        const tbody = document.querySelector('#calcTable tbody');
+        const tfoot = document.querySelector('#calcTable tfoot');
+        tbody.innerHTML = '';
+        let sNi = 0, sXiNi = 0, sAbsNi = 0, sSqNi = 0;
+        labels.forEach(xi => {
+            const ni = freqs[xi];
+            const xini = xi * ni;
+            const abs = Math.abs(xi - mean);
+            const abs_ni = abs * ni;
+            const sq = Math.pow(xi - mean, 2);
+            const sq_ni = sq * ni;
+            sNi += ni; sXiNi += xini; sAbsNi += abs_ni; sSqNi += sq_ni;
+            tbody.innerHTML += `<tr><td>${fmt(xi)}</td><td>${ni}</td><td>${fmt(xini)}</td><td>${fmt(abs)}</td><td>${fmt(abs_ni)}</td><td>${fmt(sq)}</td><td>${fmt(sq_ni)}</td></tr>`;
+        });
+        tfoot.innerHTML = `<tr class="sum-row"><td>Σ</td><td>${sNi}</td><td>${fmt(sXiNi)}</td><td>-</td><td>${fmt(sAbsNi)}</td><td>-</td><td>${fmt(sSqNi)}</td></tr>`;
+        const avgDev = sNi > 0 ? (sAbsNi / sNi) : 0;
+        const avgEl = document.getElementById('val-avgdev');
+        if (avgEl) { avgEl.innerText = fmt(avgDev); }
+    }
+
+    function renderCharts(freqs) {
+        const labels = Object.keys(freqs).map(Number).sort((a,b) => a - b);
+        const data = labels.map(l => freqs[l]);
+        if (charts.pie) charts.pie.destroy();
+        if (charts.line) charts.line.destroy();
+        charts.pie = new Chart(document.getElementById('pieChart').getContext('2d'), {
+            type: 'pie',
+            data: { labels: labels.map(l => fmt(l)), datasets: [{ data: data, backgroundColor: ['#3498db','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#e67e22','#1abc9c'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { datalabels: { 
+                formatter: (val, ctx) => {
+                    const total = ctx.dataset.data.reduce((a,b) => a+b, 0);
+                    return (val * 360 / total).toFixed(1) + '°';
+                }, color: '#fff', font: { weight: 'bold', size: 10 }
+            }}}
+        });
+        charts.line = new Chart(document.getElementById('lineChart').getContext('2d'), {
+            type: 'line',
+            data: { labels: labels.map(l => fmt(l)), datasets: [{ label: 'Četnost', data: data, borderColor: '#3498db', tension: 0.3, fill: true, backgroundColor: 'rgba(52,152,219,0.1)' }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { datalabels: { display: false } } }
+        });
+    }
+
+    function generateShareLinkAndQR(rawInput) {
+        const cleanData = rawInput.split(/[\s;]+/).filter(s => s.trim() !== "").join(';');
+        const baseUrl = 'https://statistika.tiiny.site/';
+        const shareUrl = baseUrl + '?data=' + encodeURIComponent(cleanData);
+        document.getElementById('shareUrlInput').value = shareUrl;
+        const qrContainer = document.getElementById("qrcode");
+        qrContainer.innerHTML = ""; 
+        qrInst = new QRCode(qrContainer, { text: shareUrl, width: 100, height: 100, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.L });
+    }
+
+    function copyShareLink() {
+        const copyText = document.getElementById("shareUrlInput");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        document.execCommand("copy");
+        const btn = document.querySelector('.btn-copy');
+        const originalText = btn.innerText;
+        btn.innerText = "✓ Zkopírováno";
+        btn.style.backgroundColor = "#27ae60";
+        setTimeout(() => { btn.innerText = originalText; btn.style.backgroundColor = "#34495e"; }, 2000);
+    }
+
+    function downloadQR() {
+        const canvas = document.querySelector('#qrcode canvas');
+        if (canvas) { const url = canvas.toDataURL("image/png"); const link = document.createElement('a'); link.download = 'statistika_qr.png'; link.href = url; link.click(); }
+    }
+
+    function buildPDFReport() {
+        const dataInput = document.getElementById('dataInput').value || '';
+        const nums = dataInput.split(/[\s;]+/).filter(s => s.trim() !== "").map(s => s.trim()).filter(Boolean);
+        const cleanData = nums.join(';');
+        const baseUrl = 'https://statistika.tiiny.site/';
+        const shareUrl = baseUrl + '?data=' + encodeURIComponent(cleanData);
+        const dateStr = new Date().toLocaleString('cs-CZ');
+        const author = (document.querySelector('.footer a') || { textContent: 'Autor' }).textContent.trim();
+        const descRaw = (document.getElementById('caseDescInput') || { value: '' }).value.trim();
+        const descEsc = descRaw ? escapeHtml(descRaw) : '';
+
+        const pieImg = (charts.pie && charts.pie.toBase64Image) ? charts.pie.toBase64Image() : '';
+        const lineImg = (charts.line && charts.line.toBase64Image) ? charts.line.toBase64Image() : '';
+
+        const tableHtml = document.getElementById('calcTable').outerHTML;
+
+        const vals = {
+            n: document.getElementById('val-n').innerText,
+            mean: document.getElementById('val-mean').innerText,
+            median: document.getElementById('val-median').innerText,
+            mode: document.getElementById('val-mode').innerText,
+            std: document.getElementById('val-std').innerText,
+            var: document.getElementById('val-var').innerText,
+            avgdev: (document.getElementById('val-avgdev') ? document.getElementById('val-avgdev').innerText : ''),
+            cv: document.getElementById('val-cv').innerText
+        };
+
+        const wrapper = document.createElement('div');
+        wrapper.id = 'pdfReport';
+        wrapper.style.background = '#fff';
+
+        const style = `
+            <style>
+            @page { size: A4; margin: 12mm; }
+            #pdfReport .pdf-page { box-sizing: border-box; width:210mm; min-height:297mm; padding:12mm; font-family: 'Segoe UI', Arial, sans-serif; color:#123; }
+            #pdfReport .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+            #pdfReport .hdr-left h1 { margin:0; font-size:20px; color:#153e5a; }
+            #pdfReport .hdr-meta { font-size:11px; color:#556877; margin-top:6px; }
+            #pdfReport .qr-box { width:120px; height:120px; }
+            #pdfReport .section-title { font-size:14px; color:#153e5a; margin:10px 0; font-weight:800; }
+            #pdfReport .input-list { background:#fbfdff; padding:8px; border:1px solid #e6eef8; border-radius:6px; font-size:12px; }
+            #pdfReport .metrics { display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin:10px 0 12px 0; }
+            #pdfReport .metric { background:#f7fbff; border:1px solid #e6eef8; padding:8px 10px; border-radius:8px; min-width:110px; text-align:center; }
+            #pdfReport .metric .label { font-size:11px; color:#667; font-weight:700; }
+            #pdfReport .metric .value { font-size:16px; color:#1f6fb3; font-weight:800; margin-top:4px; }
+            #pdfReport table { width:100%; border-collapse:collapse; font-size:11px; }
+            #pdfReport th, #pdfReport td { border:1px solid #111; padding:6px; }
+            #pdfReport .chart { border:1px solid #e6eef8; padding:8px; border-radius:8px; margin-bottom:12px; }
+            #pdfReport .chart img { width: 140mm; max-width: 100%; height: auto; display: block; margin: 0 auto; }
+            #pdfReport .footer-note { text-align:center; color:#667; font-size:11px; margin-top:8px; }
+            #pdfReport .page-number { text-align:right; font-size:11px; color:#667; }
+            #pdfReport .page-break { page-break-after: always; }
+            </style>
+        `;
+
+        const page1 = `
+            <div class="pdf-page">
+                <div class="header">
+                    <div class="hdr-left">
+                        <h1>Statistický report dat</h1>
+                        <div class="hdr-meta">Datum: ${dateStr}</div>
+                    </div>
+                    <div class="qr-box" id="pdf-qr-1"></div>
+                </div>
+                ${ descEsc ? `<div class="section-title">Zadání</div><div class="input-list">${descEsc}</div>` : '' }
+
+                <div class="section-title">Vstupní data</div>
+                <div class="input-list">${nums.join(', ')}</div>
+
+                <div class="section-title">Klíčové metriky</div>
+                <div class="metrics">
+                    <div class="metric"><div class="label">Rozsah (n)</div><div class="value">${vals.n}</div></div>
+                    <div class="metric"><div class="label">Průměr (x̄)</div><div class="value">${vals.mean}</div></div>
+                    <div class="metric"><div class="label">Medián (x̃)</div><div class="value">${vals.median}</div></div>
+                    <div class="metric"><div class="label">Modus (x̂)</div><div class="value">${vals.mode}</div></div>
+                    <div class="metric"><div class="label">Směr. odchylka</div><div class="value">${vals.std}</div></div>
+                    <div class="metric"><div class="label">Rozptyl</div><div class="value">${vals.var}</div></div>
+                    <div class="metric"><div class="label">Prům. odchylka</div><div class="value">${vals.avgdev}</div></div>
+                    <div class="metric"><div class="label">Var. koef.</div><div class="value">${vals.cv}</div></div>
+                </div>
+
+                <div class="section-title">Výpočtová tabulka</div>
+                <div class="table-wrap">${tableHtml}</div>
+
+                <div class="page-number">Strana 1 / 2</div>
+            </div>
+        `;
+
+        const page2 = `
+            <div class="pdf-page page-break">
+                <div class="header">
+                    <div class="hdr-left"><h1>Statistický report dat</h1><div class="hdr-meta">Datum: ${dateStr}</div></div>
+                    <div class="qr-box" id="pdf-qr-2"></div>
+                </div>
+
+                <div class="section-title">Grafické znázornění</div>
+                <div class="chart">
+                    <div style="text-align:center; margin-bottom:6px; font-weight:700; color:#356;">Podíly (Úhly °)</div>
+                    ${ pieImg ? `<img src="${pieImg}" style="max-width:100%; height:auto; display:block; margin:0 auto;"/>` : '' }
+                </div>
+                <div class="chart">
+                    <div style="text-align:center; margin-bottom:6px; font-weight:700; color:#356;">Rozdělení četností</div>
+                    ${ lineImg ? `<img src="${lineImg}" style="max-width:100%; height:auto; display:block; margin:0 auto;"/>` : '' }
+                </div>
+
+                <div class="page-number">Strana 2 / 2</div>
+            </div>
+        `;
+
+        wrapper.innerHTML = style + page1 + page2;
+
+        // expose share URL so caller can synchronously create QR codes after append
+        wrapper._shareUrl = shareUrl;
+
+        return wrapper;
+    }
+
+    async function exportToPDF() {
+        if (typeof html2pdf === 'undefined') { alert('Služba pro PDF se načítá...'); return; }
+        const reportEl = buildPDFReport();
+        // append in-view (fixed) so html2canvas can render it reliably
+        reportEl.style.position = 'fixed';
+        reportEl.style.left = '0';
+        reportEl.style.top = '0';
+        reportEl.style.zIndex = '9999';
+        document.body.appendChild(reportEl);
+
+        // create QR codes synchronously now that wrapper is in DOM
+        const shareUrl = reportEl._shareUrl || '';
+        if (typeof QRCode !== 'undefined' && shareUrl) {
+            try {
+                new QRCode(reportEl.querySelector('#pdf-qr-1'), { text: shareUrl, width: 120, height: 120, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+                new QRCode(reportEl.querySelector('#pdf-qr-2'), { text: shareUrl, width: 120, height: 120, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            } catch (e) { /* ignore */ }
+        }
+
+        // wait for images and canvases (QR) to be ready
+        await waitForImagesAndCanvases(reportEl, 3000);
+
+        const canvasScale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+        const opt = {
+            margin: 10,
+            filename: 'statistika_report.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: canvasScale, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+        };
+
+        try {
+            const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : (typeof jsPDF !== 'undefined' ? jsPDF : null);
+            if (!jsPDFCtor) throw new Error('jsPDF not available');
+            const pdf = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            const pages = Array.from(reportEl.querySelectorAll('.pdf-page'));
+            if (pages.length === 0) {
+                const canvas = await html2canvas(reportEl, { scale: canvasScale, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' });
+                const imgData = canvas.toDataURL('image/png');
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            } else {
+                for (let i = 0; i < pages.length; i++) {
+                    const p = pages[i];
+                    const prev = { position: p.style.position || '', left: p.style.left || '', top: p.style.top || '', zIndex: p.style.zIndex || '', width: p.style.width || '', height: p.style.height || '' };
+                    p.style.position = 'fixed';
+                    p.style.left = '0';
+                    p.style.top = '0';
+                    p.style.zIndex = '10000';
+                    p.style.width = '210mm';
+                    p.style.height = '297mm';
+
+                    await waitForImagesAndCanvases(p, 2000);
+                    const canvas = await html2canvas(p, { scale: canvasScale, useCORS: true, allowTaint: true, backgroundColor: '#ffffff' });
+                    const imgData = canvas.toDataURL('image/png');
+
+                    if (i > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+                    p.style.position = prev.position;
+                    p.style.left = prev.left;
+                    p.style.top = prev.top;
+                    p.style.zIndex = prev.zIndex;
+                    p.style.width = prev.width;
+                    p.style.height = prev.height;
+                }
+            }
+
+            pdf.save('statistika_report.pdf');
+        } catch (e) {
+            console.error('PDF export error:', e);
+            alert('Chyba při generování PDF. Zkontrolujte konzoli pro detaily.');
+        } finally {
+            try { document.body.removeChild(reportEl); } catch (e) { }
+        }
+    }
+
+    function waitForImagesAndCanvases(rootEl, timeout = 3000) {
+        return new Promise((resolve) => {
+            const imgs = Array.from(rootEl.querySelectorAll('img'));
+            const canvases = Array.from(rootEl.querySelectorAll('canvas'));
+            const total = imgs.length + canvases.length;
+            if (total === 0) return setTimeout(resolve, 50);
+            let doneCount = 0;
+            const done = () => { doneCount++; if (doneCount >= total) resolve(); };
+
+            imgs.forEach(img => {
+                if (img.complete) return done();
+                img.addEventListener('load', done);
+                img.addEventListener('error', done);
+            });
+
+            canvases.forEach(canvas => {
+                if (canvas.width > 0 && canvas.height > 0) return done();
+                // poll canvas size
+                let attempts = 0;
+                const check = () => { attempts++; if (canvas.width > 0 && canvas.height > 0) return done(); if (attempts < 10) setTimeout(check, 100); else done(); };
+                check();
+            });
+
+            // fallback timeout
+            setTimeout(resolve, timeout);
+        });
+    }
+
+    function exportToExcel() { const wb = XLSX.utils.table_to_book(document.getElementById('calcTable')); XLSX.writeFile(wb, 'statistika_export.xlsx'); }
+
+    function exportToWord() {
+        if (typeof htmlDocx === 'undefined') { alert("Služba pro DOCX se načítá..."); return; }
+        const rawDesc = (document.getElementById('caseDescInput') || { value: '' }).value.trim();
+        const escDesc = rawDesc.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const descHtml = escDesc ? `<h3>Zadání</h3><p>${escDesc}</p>` : '';
+        const content = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body { font-family: 'Calibri', Arial, sans-serif; } h1 { color: #2c3e50; text-align: center; } h3 { color: #34495e; border-bottom: 1px solid #ccc; padding-bottom: 5px; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #000; padding: 8px; text-align: right; }</style></head><body><h1>Statistický Report</h1>${descHtml}<h3>Základní charakteristiky</h3><ul><li><b>n:</b> ${document.getElementById('val-n').innerText}</li><li><b>x̄:</b> ${document.getElementById('val-mean').innerText}</li><li><b>x̃:</b> ${document.getElementById('val-median').innerText}</li><li><b>x̂:</b> ${document.getElementById('val-mode').innerText}</li><li><b>s_x:</b> ${document.getElementById('val-std').innerText}</li><li><b>s_x²:</b> ${document.getElementById('val-var').innerText}</li><li><b>v_x:</b> ${document.getElementById('val-cv').innerText}</li></ul><h3>Výpočtová tabulka</h3>${document.getElementById('tableExport').innerHTML}</body></html>`;
+        const converted = htmlDocx.asBlob(content); saveAs(converted, 'statistika_report.docx');
+    }
+
+    document.getElementById('cameraInput').addEventListener('change', function(e) {
+        const file = e.target.files[0]; if(!file) return;
+        document.getElementById('statusOCR').innerText = "⚡ Skenuji...";
+        Tesseract.recognize(file, 'eng+ces').then(({ data: { text } }) => { const found = text.match(/\d+([.,]\d+)?/g); if(found) document.getElementById('dataInput').value = found.join('; '); document.getElementById('statusOCR').innerText = "✅ Hotovo."; update(); });
+    });
+
+    document.getElementById('dataInput').addEventListener('input', update);
+    document.getElementById('caseDescInput').addEventListener('input', update);
+    window.onload = function() { const urlParams = new URLSearchParams(window.location.search); if (urlParams.has('data')) { document.getElementById('dataInput').value = decodeURIComponent(urlParams.get('data')).replace(/;/g, '; '); } update(); };
+</script>
+
+</body>
+</html>
