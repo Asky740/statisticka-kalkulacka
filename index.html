@@ -75,6 +75,27 @@
             font-size: 13px;
         }
 
+        /* Akční sloupec u textového pole (scan + smazat) - tlačítka vedle sebe */
+        .input-actions {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            align-items: stretch;
+            width: 180px; /* šířka na desktopu, nepoužívat flex-basis (vyhýbá se fixní výšce při column layoutu) */
+        }
+        .input-actions > button {
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+        .input-actions .btn-scan { background-color: #f39c12; color: white; border: none; }
+        .input-actions .btn-clear { background-color: #e74c3c; color: white; margin: 0; flex-direction: row; }
+
         /* --- REPORT DESCRIPTION --- */
         .report-desc { background: #f8fbff; border-left: 4px solid #cfe7ff; padding: 10px 12px; border-radius: 6px; color: #123244; margin-bottom: 12px; font-size: 14px; display: none; }
 
@@ -151,16 +172,33 @@
             .share-inline { flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 0; }
             .share-inline .btn-copy { margin-left: 0; width: 100%; }
             
-            /* Zarovnání pole a tlačítka na smazání pro mobily */
+            /* Zarovnání pole a tlačítek pro mobily: tlačítka zůstanou vedle sebe a zabírají řádek pod textarea */
             .textarea-container {
                 flex-direction: column;
                 align-items: stretch;
+            }
+            .textarea-container .input-actions {
+                flex-direction: row;
+                width: 100%;
+                gap: 8px;
+            }
+            .textarea-container .input-actions > button {
+                flex: 1 1 0;
+                padding: 14px;
+                height: 56px; /* pevná výška na mobilu */
             }
             .btn-clear {
                 flex: 1 1 auto; /* Na mobilu vrátíme roztahování */
                 width: 100%;
                 flex-direction: row; /* Zpět vedle sebe */
                 padding: 14px;
+            }
+        }
+
+        /* Desktop-only: tlačítka vyplní výšku textarea */
+        @media (min-width: 651px) {
+            .input-actions > button {
+                height: 100%;
             }
         }
 
@@ -200,24 +238,23 @@
     <h1 class="no-export">Statistická Kalkulačka</h1>
 
     <div class="no-export">
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
-        <button class="btn-scan scan-top" onclick="document.getElementById('cameraInput').click()">📷 Skenovat příklad</button>
-        
-        <p style="font-size: 14px; margin-bottom: 0;">Čísla oddělujte <strong>mezerou</strong> nebo <strong>středníkem</strong>:</p>
+        <div style="margin-bottom:10px">
+            <label for="caseDescInput" style="font-size:13px; color:#4a5568; display:block; margin-bottom:6px;"><strong>↓ Textový</strong> popis / zadání (volitelné)</label>
+            <input id="caseDescInput" type="text" placeholder="Krátký popis dat nebo zadání" style="width:100%; padding:10px; border:1px solid #e6eef8; border-radius:8px; background:#fff;" />
+        </div>
+
+        <p style="font-size: 14px; margin-bottom: 0;"><strong>↓ Čísla</strong> oddělujte <strong>mezerou</strong> nebo <strong>středníkem</strong>:</p>
 
         <div class="textarea-container">
             <textarea id="dataInput">15; 16,5; 18; 15; 20; 22,2; 19; 18,5; 16; 17; 15; 21</textarea>
-            <button onclick="clearData()" class="btn-clear no-export">
-                <span style="font-size: 20px;">🗑️</span>
-                <span>Smazat</span>
-            </button>
+            <div class="input-actions">
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+                <button class="btn-scan" onclick="document.getElementById('cameraInput').click()">📷 Skenovat</button>
+                <button onclick="clearData()" class="btn-clear no-export">🗑️ Smazat</button>
+            </div>
         </div>
         
         <div id="statusOCR" style="font-size: 12px; color: #e67e22; margin-top: 5px;"></div>
-        <div style="margin-top:10px">
-            <label for="caseDescInput" style="font-size:13px; color:#4a5568; display:block; margin-bottom:6px;">Popis / zadání (volitelné)</label>
-            <input id="caseDescInput" type="text" placeholder="Krátký popis dat nebo zadání" style="width:100%; padding:10px; border:1px solid #e6eef8; border-radius:8px; background:#fff;" />
-        </div>
     </div>
 
     <div id="section1">
